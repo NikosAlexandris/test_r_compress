@@ -1,12 +1,12 @@
 """
-Name:       Suggested tests on NULL file compression
-Purpose:    Test if NULL compression is non destructive
+Name:       Tests on NULL file compression
+Purpose:    Test if NULL compression preserves raster data
 Source:     <https://trac.osgeo.org/grass/ticket/2750#comment:63>
-
 @author Nikos Alexamdris
 """
 
 """Globals"""
+
 GRASS_COMPRESS_NULLS_ENABLED='1'
 GRASS_COMPRESS_NULLS_DISABLED='0'
 WEST=637500
@@ -31,6 +31,7 @@ import grass.script as g
 import os
 
 """Helper functions"""
+
 def get_raster_univariate_statistics(raster):
     """
     """
@@ -77,21 +78,16 @@ class TestCompressIncludingNULL(TestCase):
     """
     Test Case Class
 
-    On a raster map with NULL cells
+    On a raster map with NULL cells, test NULL file compression
+    [GRASS_COMPRESS_NULLS=0 or GRASS_COMPRESS_NULLS=1] via
 
-    - Test r.compress with NULL compression
+    - the result of r.compress via `r.univar -g`
+    - the result of r.null -z
 
-    a. test the result of r.compress via `r.univar -g`
-    b. test the result of r.null -z
-
-    - Test r.compress without NULL compression
-
-    a. unset GRASS_COMPRESS_NULLS
-    b. test the result of r.compress
-    c. test the result of r.null -z
+    On two raster maps, map A with compressed NULL cells and map B with
+    uncompressed NULL cells, test the result of 'map A + map B' for both cases
+    when NULL file compression is enabled and disabled.
     """
-
-    # print "'GRASS_COMPRESS_NULLS' is set to: ", os.environ['GRASS_COMPRESS_NULLS']
 
     @classmethod
     def setUpClass(cls):
@@ -113,10 +109,9 @@ class TestCompressIncludingNULL(TestCase):
         Remove test raster maps created during and for the test
         """
         self.runModule('g.remove', flags='f', type='raster', name=MAP_WITHOUT_NULLS)
-        self.runModule('g.remove', flags='f', type='raster',
-                name=MAP_A)
-        self.runModule('g.remove', flags='f', type='raster',
-                name=MAP_AB)
+        self.runModule('g.remove', flags='f', type='raster', name=MAP_A)
+        self.runModule('g.remove', flags='f', type='raster', name=MAP_B)
+        self.runModule('g.remove', flags='f', type='raster', name=MAP_AB)
 
     def setUp(self):
         """
@@ -145,7 +140,7 @@ class TestCompressIncludingNULL(TestCase):
         self.runModule('r.mapcalc', expression=expression_two, overwrite=True)
         is_null_file_compressed(MAP_B)
 
-    def test_single_map_univariate_statistics(self):
+    def test_null_file_compression_on_single_map(self):
         """
         This function tests if NULL file compression preserves the data via the
         following steps:
@@ -166,6 +161,7 @@ class TestCompressIncludingNULL(TestCase):
         self.assertRasterFitsUnivar(raster=MAP_A,
                 precision=PRECISION, reference=univar_string)
 
+    def test_null_file_compression_on_mapcalc_addition(self):
         """
         Further, the addition of the following maps is tested regarding NULL
         file compression:
