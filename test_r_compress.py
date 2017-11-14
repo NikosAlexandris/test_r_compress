@@ -56,23 +56,29 @@ def is_null_file_compressed(raster):
 
     return status
 
-def switch_grass_compress_nulls_variable(status):
+def switch_grass_compress_nulls_variable():
     """
     Switch GRASS_COMPRESS_NULLS variable:
     - to 1 if 0
     - to 0 if 0
     """
     global MESSAGE
+    
 
-    if status == GRASS_COMPRESS_NULLS_DISABLED:
+    if not "GRASS_COMPRESS_NULLS" in os.environ:
+        status = os.environ['GRASS_COMPRESS_NULLS'] = '0'
+
+    if os.environ['GRASS_COMPRESS_NULLS'] == GRASS_COMPRESS_NULLS_DISABLED:
         os.environ['GRASS_COMPRESS_NULLS'] = GRASS_COMPRESS_NULLS_ENABLED
-        message = "enabled\n\n"
+        # message = "enabled\n\n"
 
     else:
         os.environ['GRASS_COMPRESS_NULLS'] = GRASS_COMPRESS_NULLS_DISABLED
-        message = "disabled\n\n"
+        # message = "disabled\n\n"
 
+    # # Verbosity -------------------------------------------------
     # print "'GRASS_COMPRESS_NULLS' set to: ", message
+    # # Verbosity -------------------------------------------------
 
 class TestCompressIncludingNULL(TestCase):
     """
@@ -121,7 +127,7 @@ class TestCompressIncludingNULL(TestCase):
         self.runModule('g.region', w=WEST, e=EAST, s=SOUTH, n=NORTH)
 
         # create a small raster map with cells set to 1
-        expression_one="{t} = 1".format(t=MAP_WITHOUT_NULLS)
+        expression_one="{one} = 1".format(one=MAP_WITHOUT_NULLS)
         self.runModule('r.mapcalc', expression=expression_one, overwrite=True)
         is_null_file_compressed(MAP_WITHOUT_NULLS)
 
@@ -129,15 +135,14 @@ class TestCompressIncludingNULL(TestCase):
         self.runModule('g.region', raster=ELEVATION)
 
         # derive a larger raster map A containing NULLs
-        expression_two="{t} = {i}".format(t=MAP_A,
-                i=MAP_WITHOUT_NULLS)
-        self.runModule('r.mapcalc', expression=expression_two, overwrite=True)
+        map_a="{alpha} = {one}".format(alpha=MAP_A,
+                one=MAP_WITHOUT_NULLS)
+        self.runModule('r.mapcalc', expression=map_a, overwrite=True)
         is_null_file_compressed(MAP_A)
 
         # derive a larger raster map B containing NULLs
-        expression_two="{t} = {i}".format(t=MAP_B,
-                i=MAP_WITHOUT_NULLS)
-        self.runModule('r.mapcalc', expression=expression_two, overwrite=True)
+        map_b="{beta} = {one}".format(beta=MAP_B, one=MAP_WITHOUT_NULLS)
+        self.runModule('r.mapcalc', expression=map_b, overwrite=True)
         is_null_file_compressed(MAP_B)
 
     def test_null_file_compression_on_single_map(self):
@@ -154,7 +159,7 @@ class TestCompressIncludingNULL(TestCase):
         """
         # is_null_file_compressed(MAP_A)
         univar_string = get_raster_univariate_statistics(MAP_A)
-        switch_grass_compress_nulls_variable(os.environ['GRASS_COMPRESS_NULLS'])
+        switch_grass_compress_nulls_variable()
         self.assertModule('r.null', flags='z', map=MAP_A, quiet=True)
         # is_null_file_compressed(MAP_A)
         # get_raster_univariate_statistics(MAP_A)
@@ -186,7 +191,7 @@ class TestCompressIncludingNULL(TestCase):
         # is_null_file_compressed(MAP_AB)
         ab_univar_string = get_raster_univariate_statistics(MAP_AB)
 
-        switch_grass_compress_nulls_variable(os.environ['GRASS_COMPRESS_NULLS'])
+        switch_grass_compress_nulls_variable()
 
         expression_three="{ab} = {a} + {b}".format(ab=MAP_AB,
                 a=MAP_A, b=MAP_B)
